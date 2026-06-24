@@ -22,6 +22,8 @@ class EarnedBadgeResource extends JsonResource
             'badge_category' => $this->badgeDefinition->badge_category,
             'earned_at'      => $this->earned_at->toIso8601String(),
             'awarded_by'     => $this->awarded_by, // null = automatically awarded
+            'privacy_hidden' => (bool) $this->privacy_hidden,
+            'is_featured'    => (bool) $this->is_featured,
         ];
     }
 }

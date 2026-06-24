@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\BadgeController;
+use App\Http\Controllers\Api\BadgeVisibilityController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\StreakController;
 use App\Http\Controllers\Api\Creator\BadgeConfigController;
@@ -26,6 +27,10 @@ Route::post('/events', [EventController::class, 'store']);
 
 // 8.4 Use streak freeze
 Route::post('/streaks/{streak}/freeze', [StreakController::class, 'freeze']);
+
+// 12.1 Badge visibility controls
+Route::patch('/badges/{badge}/visibility', [BadgeVisibilityController::class, 'setVisibility']);
+Route::patch('/badges/{badge}/feature', [BadgeVisibilityController::class, 'setFeatured']);
 
 /*
 |--------------------------------------------------------------------------

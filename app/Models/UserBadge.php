@@ -14,11 +14,15 @@ class UserBadge extends Model
         'awarded_by',
         'revoked_at',
         'revoke_reason',
+        'privacy_hidden',
+        'is_featured',
     ];
 
     protected $casts = [
-        'earned_at' => 'datetime',
-        'revoked_at' => 'datetime',
+        'earned_at'      => 'datetime',
+        'revoked_at'     => 'datetime',
+        'privacy_hidden' => 'boolean',
+        'is_featured'    => 'boolean',
     ];
 
     public function badgeDefinition()
