@@ -53,7 +53,7 @@ class EvaluateStreaksDailyCommand extends Command
                 continue;
             }
 
-            EvaluateUserStreaksJob::dispatch($pair->user_id, $pair->creator_app_id, $localToday);
+            EvaluateUserStreaksJob::dispatch($pair->user_id, $pair->creator_app_id, $localToday, $timezone);
             $dispatched++;
         }
 

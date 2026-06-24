@@ -21,6 +21,7 @@ class EvaluateUserStreaksJob implements ShouldQueue
         public readonly int $userId,
         public readonly int $creatorAppId,
         public readonly string $localDate,
+        public readonly string $timezone,
     ) {}
 
     public function handle(
@@ -40,55 +41,59 @@ class EvaluateUserStreaksJob implements ShouldQueue
 
             $streak = $result->streak;
 
+            // 10.3 — Milestone: evaluate streak badges inline so we can include them in the trigger.
             if (!empty($result->milestonesReached)) {
-                EvaluateUserBadgesJob::dispatch(
+                $earnedBadges = $badgeService->evaluateStreakBadges(
+                    $this->userId,
+                    $this->creatorAppId,
+                    $streak->streak_type,
+                    $streak->current_count,
+                );
+
+                foreach ($earnedBadges as $userBadge) {
+                    $userBadge->load('badgeDefinition');
+                    $notificationService->badgeEarned(
+                        $this->userId,
+                        $this->creatorAppId,
+                        $userBadge,
+                        $this->localDate,
+                    );
+                }
+
+                foreach ($result->milestonesReached as $milestone) {
+                    $notificationService->milestone(
+                        $this->userId,
+                        $this->creatorAppId,
+                        $streak->streak_type->value,
+                        $milestone,
+                        $streak->current_count,
+                        $this->localDate,
+                        $earnedBadges,
+                    );
+                }
+            }
+
+            // 10.1 — At-risk: schedule reminder at 9 PM in the user's timezone.
+            if ($streak->status === StreakStatus::AtRisk) {
+                $notificationService->atRisk(
                     $this->userId,
                     $this->creatorAppId,
                     $streak->streak_type->value,
                     $streak->current_count,
-                );
-
-                foreach ($result->milestonesReached as $milestone) {
-                    $notificationService->create(
-                        $this->userId,
-                        $this->creatorAppId,
-                        NotificationTriggerService::TYPE_STREAK_MILESTONE,
-                        [
-                            'streak_type'   => $streak->streak_type->value,
-                            'milestone'     => $milestone,
-                            'current_count' => $streak->current_count,
-                        ],
-                    );
-                }
-            }
-
-            if ($streak->status === StreakStatus::AtRisk) {
-                if (!$notificationService->hasPendingTodayOf(
-                    $this->userId, $this->creatorAppId,
-                    NotificationTriggerService::TYPE_STREAK_AT_RISK,
+                    $this->timezone,
                     $this->localDate,
-                )) {
-                    $notificationService->create(
-                        $this->userId,
-                        $this->creatorAppId,
-                        NotificationTriggerService::TYPE_STREAK_AT_RISK,
-                        [
-                            'streak_type'   => $streak->streak_type->value,
-                            'current_count' => $streak->current_count,
-                        ],
-                    );
-                }
+                );
             }
 
+            // 10.2 — Broken: include previous count and reactivation message.
             if ($streak->status === StreakStatus::Broken) {
-                $notificationService->create(
+                $notificationService->broken(
                     $this->userId,
                     $this->creatorAppId,
-                    NotificationTriggerService::TYPE_STREAK_BROKEN,
-                    [
-                        'streak_type'  => $streak->streak_type->value,
-                        'longest_count' => $streak->longest_count,
-                    ],
+                    $streak->streak_type->value,
+                    $streak->longest_count,
+                    $result->streak->current_count,
+                    $this->localDate,
                 );
             }
         }

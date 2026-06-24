@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Enums\StreakType;
 use App\Services\BadgeEvaluationService;
 use App\Services\NotificationTriggerService;
+use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -38,18 +39,17 @@ class EvaluateUserBadgesJob implements ShouldQueue
             $awarded = $badgeService->evaluateForUser($this->userId, $this->creatorAppId);
         }
 
+        $localDate = Carbon::now()->toDateString();
+
         foreach ($awarded as $userBadge) {
             $userBadge->load('badgeDefinition');
 
-            $notificationService->create(
+            // 10.4 — Full badge details: name, description, icon, category.
+            $notificationService->badgeEarned(
                 $this->userId,
                 $this->creatorAppId,
-                NotificationTriggerService::TYPE_BADGE_EARNED,
-                [
-                    'badge_id'   => $userBadge->badge_definition_id,
-                    'badge_name' => $userBadge->badgeDefinition?->name,
-                    'earned_at'  => $userBadge->earned_at->toIso8601String(),
-                ],
+                $userBadge,
+                $localDate,
             );
         }
     }
