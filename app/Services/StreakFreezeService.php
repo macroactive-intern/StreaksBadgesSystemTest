@@ -95,7 +95,7 @@ class StreakFreezeService
             ->where('creator_app_id', $creatorAppId)
             ->where('streak_type', $streakType->value)
             ->whereNotNull('used_at')
-            ->where('applied_to_date', $localDate)
+            ->whereDate('applied_to_date', $localDate)
             ->exists();
     }
 }

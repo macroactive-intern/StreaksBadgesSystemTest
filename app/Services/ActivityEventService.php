@@ -74,7 +74,7 @@ class ActivityEventService
         return ActivityEvent::where('user_id', $userId)
             ->where('creator_app_id', $creatorAppId)
             ->where('event_type', $eventType->value)
-            ->where('local_event_date', $localDate)
+            ->whereDate('local_event_date', $localDate)
             ->whereNull('revoked_at')
             ->exists();
     }

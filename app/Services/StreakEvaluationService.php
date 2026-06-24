@@ -150,8 +150,9 @@ class StreakEvaluationService
             return false;
         }
 
-        // diffInDays === 2 means exactly 1 missed day between lastCompleted and today
-        $gap = Carbon::parse($lastCompletedDate)->diffInDays(Carbon::parse($localDate));
+        // diffInDays === 2 means exactly 1 missed day between lastCompleted and today.
+        // Cast to int because diffInDays() returns float in recent Carbon versions.
+        $gap = (int) Carbon::parse($lastCompletedDate)->diffInDays(Carbon::parse($localDate));
 
         if ($gap !== 2) {
             return false;
