@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\BadgeController;
 use App\Http\Controllers\Api\BadgeVisibilityController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\StreakController;
+use App\Http\Controllers\Api\Creator\AnalyticsController;
 use App\Http\Controllers\Api\Creator\BadgeConfigController;
 use App\Http\Controllers\Api\Creator\EngagementController;
 use App\Http\Controllers\Api\Creator\EventAdminController;
@@ -62,4 +63,10 @@ Route::prefix('creator')->group(function () {
 
     // 11.3 Revoke activity events when source content is deleted
     Route::delete('/events/source', [EventAdminController::class, 'revokeBySource']);
+
+    // 13.2 Engagement metrics summary
+    Route::get('/analytics', [AnalyticsController::class, 'summary']);
+
+    // 13.3 Pilot cohort comparison report
+    Route::get('/pilot/report', [AnalyticsController::class, 'pilotReport']);
 });

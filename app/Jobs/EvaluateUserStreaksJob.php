@@ -3,7 +3,9 @@
 namespace App\Jobs;
 
 use App\Enums\StreakStatus;
+use App\Models\AnalyticsEvent;
 use App\Models\UserStreak;
+use App\Services\AnalyticsEventService;
 use App\Services\BadgeEvaluationService;
 use App\Services\NotificationTriggerService;
 use App\Services\StreakEvaluationService;
@@ -29,6 +31,7 @@ class EvaluateUserStreaksJob implements ShouldQueue
         BadgeEvaluationService $badgeService,
         StreakFreezeService $freezeService,
         NotificationTriggerService $notificationService,
+        AnalyticsEventService $analyticsService,
     ): void {
         $this->autoApplyFreezes($freezeService);
 
@@ -40,6 +43,23 @@ class EvaluateUserStreaksJob implements ShouldQueue
             }
 
             $streak = $result->streak;
+
+            // 13.1 — Record streak lifecycle analytics event.
+            if ($streak->status === StreakStatus::Active && $streak->current_count === 1) {
+                $analyticsService->record($this->creatorAppId, $this->userId, AnalyticsEvent::STREAK_STARTED, [
+                    'streak_type' => $streak->streak_type->value,
+                ]);
+            } elseif ($streak->status === StreakStatus::Active && $streak->current_count > 1) {
+                $analyticsService->record($this->creatorAppId, $this->userId, AnalyticsEvent::STREAK_CONTINUED, [
+                    'streak_type'   => $streak->streak_type->value,
+                    'current_count' => $streak->current_count,
+                ]);
+            } elseif ($streak->status === StreakStatus::Broken) {
+                $analyticsService->record($this->creatorAppId, $this->userId, AnalyticsEvent::STREAK_BROKEN, [
+                    'streak_type'   => $streak->streak_type->value,
+                    'longest_count' => $streak->longest_count,
+                ]);
+            }
 
             // 10.3 — Milestone: evaluate streak badges inline so we can include them in the trigger.
             if (!empty($result->milestonesReached)) {

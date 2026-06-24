@@ -7,7 +7,9 @@ use App\Exceptions\NoAvailableFreezeException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UseStreakFreezeRequest;
 use App\Http\Resources\StreakWidgetResource;
+use App\Models\AnalyticsEvent;
 use App\Models\UserStreak;
+use App\Services\AnalyticsEventService;
 use App\Services\StreakFreezeService;
 use App\Services\UserDashboardService;
 use Illuminate\Http\JsonResponse;
@@ -18,6 +20,7 @@ class StreakController extends Controller
     public function __construct(
         private UserDashboardService $dashboardService,
         private StreakFreezeService $freezeService,
+        private AnalyticsEventService $analyticsService,
     ) {}
 
     /**
@@ -63,6 +66,14 @@ class StreakController extends Controller
         } catch (FreezeCooldownException) {
             return response()->json(['message' => 'A freeze was used recently. Please wait 30 days before using another.'], 422);
         }
+
+        // 13.1 — Track freeze used.
+        $this->analyticsService->record(
+            (int) $request->creator_app_id,
+            (int) $request->user_id,
+            AnalyticsEvent::FREEZE_USED,
+            ['streak_type' => $streak->streak_type->value],
+        );
 
         return response()->json([
             'data' => [

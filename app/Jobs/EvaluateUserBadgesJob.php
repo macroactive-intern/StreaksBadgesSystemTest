@@ -3,6 +3,8 @@
 namespace App\Jobs;
 
 use App\Enums\StreakType;
+use App\Models\AnalyticsEvent;
+use App\Services\AnalyticsEventService;
 use App\Services\BadgeEvaluationService;
 use App\Services\NotificationTriggerService;
 use Carbon\Carbon;
@@ -27,6 +29,7 @@ class EvaluateUserBadgesJob implements ShouldQueue
     public function handle(
         BadgeEvaluationService $badgeService,
         NotificationTriggerService $notificationService,
+        AnalyticsEventService $analyticsService,
     ): void {
         if ($this->streakTypeValue !== null && $this->currentStreakCount !== null) {
             $awarded = $badgeService->evaluateStreakBadges(
@@ -51,6 +54,12 @@ class EvaluateUserBadgesJob implements ShouldQueue
                 $userBadge,
                 $localDate,
             );
+
+            // 13.1 — Track badge earned.
+            $analyticsService->record($this->creatorAppId, $this->userId, AnalyticsEvent::BADGE_EARNED, [
+                'badge_definition_id' => $userBadge->badge_definition_id,
+                'badge_slug'          => $userBadge->badgeDefinition?->slug,
+            ]);
         }
     }
 }
