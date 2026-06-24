@@ -16,11 +16,13 @@ class ActivityEvent extends Model
         'metadata',
         'source_type',
         'source_id',
+        'revoked_at',
     ];
 
     protected $casts = [
         'event_timestamp_utc' => 'datetime',
-        'local_event_date' => 'date',
-        'metadata' => 'array',
+        'local_event_date'    => 'date',
+        'metadata'            => 'array',
+        'revoked_at'          => 'datetime',
     ];
 }

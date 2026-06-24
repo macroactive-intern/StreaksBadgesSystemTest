@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Data\ActivityEventMetadata;
 use App\Enums\EventType;
+use App\Exceptions\BackfillNotAllowedException;
+use App\Exceptions\CommunityRateLimitException;
+use App\Exceptions\DuplicateSourceEventException;
 use App\Exceptions\FutureDatedEventException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\RecordEventRequest;
@@ -52,6 +55,12 @@ class EventController extends Controller
             );
         } catch (FutureDatedEventException) {
             return response()->json(['message' => 'Event date cannot be in the future.'], 422);
+        } catch (BackfillNotAllowedException) {
+            return response()->json(['message' => 'Events older than 1 day cannot be recorded.'], 422);
+        } catch (DuplicateSourceEventException) {
+            return response()->json(['message' => 'This event has already been recorded.'], 409);
+        } catch (CommunityRateLimitException) {
+            return response()->json(['message' => 'Daily community event limit reached.'], 429);
         }
 
         $localDate = $timestamp->copy()->setTimezone($request->user_timezone)->toDateString();

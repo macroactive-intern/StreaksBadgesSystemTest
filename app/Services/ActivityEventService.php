@@ -10,13 +10,19 @@ use Carbon\Carbon;
 
 class ActivityEventService
 {
+    public function __construct(private AntiCheatService $antiCheat) {}
+
     /**
      * Record a user activity event.
      *
-     * Throws FutureDatedEventException if the event's local date is in the future.
-     * All events are persisted; duplicate streak credit prevention is enforced
-     * via hasQualifyingEventForDate(), which the streak evaluation service calls
-     * before crediting a day.
+     * Validation order (all throw on failure):
+     *  1. FutureDatedEventException   — local date is in the future
+     *  2. BackfillNotAllowedException — local date is older than the backfill window
+     *  3. DuplicateSourceEventException — source_id already recorded for this user
+     *  4. CommunityRateLimitException — daily cap exceeded for community events
+     *
+     * Multiple events per day are stored; only one counts for streak progress
+     * (enforced via hasQualifyingEventForDate() in the streak evaluation service).
      */
     public function record(
         int $userId,
@@ -33,6 +39,15 @@ class ActivityEventService
             throw new FutureDatedEventException();
         }
 
+        $this->antiCheat->checkBackfillWindow($localDate, $userTimezone);
+
+        $sourceId = $this->resolveSourceId($eventType, $metadata);
+        $this->antiCheat->checkDuplicateSource($userId, $creatorAppId, $eventType, $sourceId);
+
+        if ($eventType === EventType::CommunityCommentPosted) {
+            $this->antiCheat->checkCommunityRateLimit($userId, $creatorAppId, $localDate);
+        }
+
         return ActivityEvent::create([
             'user_id'              => $userId,
             'creator_app_id'       => $creatorAppId,
@@ -42,14 +57,13 @@ class ActivityEventService
             'local_event_date'     => $localDate,
             'metadata'             => $metadata?->toArray(),
             'source_type'          => $eventType->sourceType(),
-            'source_id'            => $this->resolveSourceId($eventType, $metadata),
+            'source_id'            => $sourceId,
         ]);
     }
 
     /**
-     * Returns true if a qualifying event already exists for the given
-     * user / creator app / event type / local date combination.
-     * Used by the streak evaluation service to avoid duplicate streak credit.
+     * 11.1 — Returns true if a non-revoked qualifying event exists for this date.
+     * Revoked events are excluded so that deleted source content cannot credit a streak.
      */
     public function hasQualifyingEventForDate(
         int $userId,
@@ -61,6 +75,7 @@ class ActivityEventService
             ->where('creator_app_id', $creatorAppId)
             ->where('event_type', $eventType->value)
             ->where('local_event_date', $localDate)
+            ->whereNull('revoked_at')
             ->exists();
     }
 

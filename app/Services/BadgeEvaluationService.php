@@ -220,18 +220,28 @@ class BadgeEvaluationService
     /**
      * Checks event count or aggregated metric against the badge threshold.
      * rule_config variants:
-     *   count-based : { "event_type": "workout_completed", "count": 100 }
-     *   metric-based: { "event_type": "workout_completed", "metric": "volume_lifted", "min_total": 100000 }
+     *   count-based        : { "event_type": "workout_completed", "count": 100 }
+     *   metric-based       : { "event_type": "workout_completed", "metric": "volume_lifted", "min_total": 100000 }
+     *   unique-source count: { "event_type": "community_comment_posted", "count": 50, "unique_sources": true }
+     *
+     * Revoked events are always excluded (11.3).
+     * unique_sources counts distinct non-null source_id values to prevent spam farming (11.4).
      */
     private function checkCountRule(int $userId, int $creatorAppId, array $config): bool
     {
         $query = ActivityEvent::where('user_id', $userId)
             ->where('creator_app_id', $creatorAppId)
-            ->where('event_type', $config['event_type']);
+            ->where('event_type', $config['event_type'])
+            ->whereNull('revoked_at');
 
         if (isset($config['metric'], $config['min_total'])) {
             $total = $query->get()->sum(fn ($e) => data_get($e->metadata, $config['metric'], 0));
             return $total >= $config['min_total'];
+        }
+
+        if (!empty($config['unique_sources'])) {
+            $count = $query->whereNotNull('source_id')->distinct('source_id')->count('source_id');
+            return $count >= ($config['count'] ?? PHP_INT_MAX);
         }
 
         return $query->count() >= ($config['count'] ?? PHP_INT_MAX);

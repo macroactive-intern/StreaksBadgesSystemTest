@@ -167,7 +167,7 @@ class BadgeDefinitionSeeder extends Seeder
                 'badge_category' => 'community',
                 'icon'           => 'badge-50-comments',
                 'rule_type'      => 'community',
-                'rule_config'    => ['event_type' => 'community_comment_posted', 'count' => 50],
+                'rule_config'    => ['event_type' => 'community_comment_posted', 'count' => 50, 'unique_sources' => true],
                 'enabled'        => true,
             ],
             [
@@ -177,7 +177,7 @@ class BadgeDefinitionSeeder extends Seeder
                 'badge_category' => 'community',
                 'icon'           => 'badge-top-contributor',
                 'rule_type'      => 'community',
-                'rule_config'    => ['event_type' => 'community_comment_posted', 'count' => 100],
+                'rule_config'    => ['event_type' => 'community_comment_posted', 'count' => 100, 'unique_sources' => true],
                 'enabled'        => true,
             ],
             [

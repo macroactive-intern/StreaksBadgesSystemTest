@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\StreakController;
 use App\Http\Controllers\Api\Creator\BadgeConfigController;
 use App\Http\Controllers\Api\Creator\EngagementController;
+use App\Http\Controllers\Api\Creator\EventAdminController;
 use App\Http\Controllers\Api\Creator\StreakConfigController;
 use Illuminate\Support\Facades\Route;
 
@@ -53,4 +54,7 @@ Route::prefix('creator')->group(function () {
 
     // 8.11 Get engagement summary
     Route::get('/engagement', [EngagementController::class, 'index']);
+
+    // 11.3 Revoke activity events when source content is deleted
+    Route::delete('/events/source', [EventAdminController::class, 'revokeBySource']);
 });
