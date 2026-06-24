@@ -23,6 +23,7 @@ class StreakWidgetResource extends JsonResource
             : ($currentCount > 0 ? 100 : 0);
 
         return [
+            'id'                 => $this->id,
             'streak_type'        => $this->streak_type->value,
             'current_count'      => $currentCount,
             'longest_count'      => $this->longest_count,
