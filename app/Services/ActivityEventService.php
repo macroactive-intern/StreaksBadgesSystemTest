@@ -7,10 +7,15 @@ use App\Enums\EventType;
 use App\Exceptions\FutureDatedEventException;
 use App\Models\ActivityEvent;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class ActivityEventService
 {
-    public function __construct(private AntiCheatService $antiCheat) {}
+    public function __construct(
+        private AntiCheatService $antiCheat,
+        private AdvancedAntiCheatService $advancedAntiCheat,
+        private ModerationService $moderation,
+    ) {}
 
     /**
      * Record a user activity event.
@@ -48,7 +53,7 @@ class ActivityEventService
             $this->antiCheat->checkCommunityRateLimit($userId, $creatorAppId, $localDate);
         }
 
-        return ActivityEvent::create([
+        $event = ActivityEvent::create([
             'user_id'              => $userId,
             'creator_app_id'       => $creatorAppId,
             'event_type'           => $eventType->value,
@@ -59,6 +64,32 @@ class ActivityEventService
             'source_type'          => $eventType->sourceType(),
             'source_id'            => $sourceId,
         ]);
+
+        // 15.4 — Run advanced checks fire-and-forget; never block the caller.
+        try {
+            $detections = $this->advancedAntiCheat->runAllChecks(
+                $userId,
+                $creatorAppId,
+                $eventType->value,
+                $userTimezone,
+                $localDate,
+                $metadata?->volumeLifted,
+            );
+
+            foreach ($detections as $detection) {
+                $this->moderation->flag(
+                    $userId,
+                    $creatorAppId,
+                    $detection['type'],
+                    $detection['severity'],
+                    $detection['payload'],
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::warning('advanced_anticheat_error', ['error' => $e->getMessage()]);
+        }
+
+        return $event;
     }
 
     /**

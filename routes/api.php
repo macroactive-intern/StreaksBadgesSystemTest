@@ -4,11 +4,15 @@ use App\Http\Controllers\Api\BadgeController;
 use App\Http\Controllers\Api\BadgeVisibilityController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\StreakController;
+use App\Http\Controllers\Api\Creator\AdvancedAnalyticsController;
 use App\Http\Controllers\Api\Creator\AnalyticsController;
 use App\Http\Controllers\Api\Creator\BadgeConfigController;
 use App\Http\Controllers\Api\Creator\EngagementController;
 use App\Http\Controllers\Api\Creator\EventAdminController;
+use App\Http\Controllers\Api\Creator\ModerationController;
 use App\Http\Controllers\Api\Creator\StreakConfigController;
+use App\Http\Controllers\Api\LeaderboardController;
+use App\Http\Controllers\Api\UserPreferencesController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -32,6 +36,14 @@ Route::post('/streaks/{streak}/freeze', [StreakController::class, 'freeze']);
 // 12.1 Badge visibility controls
 Route::patch('/badges/{badge}/visibility', [BadgeVisibilityController::class, 'setVisibility']);
 Route::patch('/badges/{badge}/feature', [BadgeVisibilityController::class, 'setFeatured']);
+
+// 15.1 Leaderboards
+Route::get('/leaderboards', [LeaderboardController::class, 'index']);
+Route::get('/leaderboards/challenge/{challenge}', [LeaderboardController::class, 'challenge']);
+
+// 15.1 User preferences (nickname, opt-in visibility)
+Route::get('/user/preferences', [UserPreferencesController::class, 'show']);
+Route::patch('/user/preferences', [UserPreferencesController::class, 'update']);
 
 /*
 |--------------------------------------------------------------------------
@@ -69,4 +81,17 @@ Route::prefix('creator')->group(function () {
 
     // 13.3 Pilot cohort comparison report
     Route::get('/pilot/report', [AnalyticsController::class, 'pilotReport']);
+
+    // 15.3 Multi-window cohort retention
+    Route::get('/analytics/cohort', [AdvancedAnalyticsController::class, 'cohortRetention']);
+
+    // 15.3 LTV correlation (caller supplies revenue data)
+    Route::post('/analytics/ltv', [AdvancedAnalyticsController::class, 'ltvCorrelation']);
+
+    // 15.3 Data warehouse batch export
+    Route::get('/analytics/export', [AdvancedAnalyticsController::class, 'exportBatch']);
+
+    // 15.4 Moderation review queue
+    Route::get('/moderation/queue', [ModerationController::class, 'index']);
+    Route::patch('/moderation/{item}', [ModerationController::class, 'review']);
 });
