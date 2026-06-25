@@ -82,8 +82,7 @@ export interface StreakConfig {
   streak_type: StreakType
   enabled: boolean
   qualifying_event_type: string | null
-  freeze_grants_per_month: number
-  at_risk_grace_hours: number
+  minimum_threshold: number
   reward_config: Record<string, unknown> | null
   created_at: string
   updated_at: string
