@@ -18,89 +18,94 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Auth
+| Public
 |--------------------------------------------------------------------------
 */
 
 Route::post('/auth/login', [AuthController::class, 'login']);
 
-/*
-|--------------------------------------------------------------------------
-| End-User Endpoints
-|--------------------------------------------------------------------------
-*/
-
-// 8.1 Get user streak summary
-Route::get('/streaks', [StreakController::class, 'index']);
-
-// 8.2 Get user badges
-Route::get('/badges', [BadgeController::class, 'index']);
-
-// 8.3 Record qualifying event
-Route::post('/events', [EventController::class, 'store']);
-
-// 8.4 Use streak freeze
-Route::post('/streaks/{streak}/freeze', [StreakController::class, 'freeze']);
-
-// 12.1 Badge visibility controls
-Route::patch('/badges/{badge}/visibility', [BadgeVisibilityController::class, 'setVisibility']);
-Route::patch('/badges/{badge}/feature', [BadgeVisibilityController::class, 'setFeatured']);
-
-// 15.1 Leaderboards
+// Leaderboards are embeddable widgets — intentionally public
 Route::get('/leaderboards', [LeaderboardController::class, 'index']);
 Route::get('/leaderboards/challenge/{challenge}', [LeaderboardController::class, 'challenge']);
 
-// 15.1 User preferences (nickname, opt-in visibility)
-Route::get('/user/preferences', [UserPreferencesController::class, 'show']);
-Route::patch('/user/preferences', [UserPreferencesController::class, 'update']);
-
 /*
 |--------------------------------------------------------------------------
-| Creator / Admin Endpoints
+| Authenticated — End-User
 |--------------------------------------------------------------------------
 */
 
-Route::prefix('creator')->group(function () {
-    // 8.5 Get creator streak config
-    Route::get('/streak-config', [StreakConfigController::class, 'index']);
+Route::middleware('auth:sanctum')->group(function () {
 
-    // 8.6 Update creator streak config
-    Route::patch('/streak-config', [StreakConfigController::class, 'update']);
+    Route::post('/auth/logout', [AuthController::class, 'logout']);
 
-    // 8.7 Get creator badge config
-    Route::get('/badge-config', [BadgeConfigController::class, 'index']);
+    // 8.1 Get user streak summary
+    Route::get('/streaks', [StreakController::class, 'index']);
 
-    // 8.8 Update creator badge config
-    Route::patch('/badge-config', [BadgeConfigController::class, 'update']);
+    // 8.2 Get user badges
+    Route::get('/badges', [BadgeController::class, 'index']);
 
-    // 8.9 Manually award badge to a user
-    Route::post('/users/{user}/badges', [BadgeConfigController::class, 'awardBadge']);
+    // 8.3 Record qualifying event — throttled: 60 per minute
+    Route::middleware('throttle:60,1')->post('/events', [EventController::class, 'store']);
 
-    // 8.10 Revoke a badge from a user
-    Route::delete('/users/{user}/badges/{badge}', [BadgeConfigController::class, 'revokeBadge']);
+    // 8.4 Use streak freeze
+    Route::post('/streaks/{streak}/freeze', [StreakController::class, 'freeze']);
 
-    // 8.11 Get engagement summary
-    Route::get('/engagement', [EngagementController::class, 'index']);
+    // 12.1 Badge visibility controls
+    Route::patch('/badges/{badge}/visibility', [BadgeVisibilityController::class, 'setVisibility']);
+    Route::patch('/badges/{badge}/feature', [BadgeVisibilityController::class, 'setFeatured']);
 
-    // 11.3 Revoke activity events when source content is deleted
-    Route::delete('/events/source', [EventAdminController::class, 'revokeBySource']);
+    // 15.1 User preferences (nickname, opt-in visibility)
+    Route::get('/user/preferences', [UserPreferencesController::class, 'show']);
+    Route::patch('/user/preferences', [UserPreferencesController::class, 'update']);
 
-    // 13.2 Engagement metrics summary
-    Route::get('/analytics', [AnalyticsController::class, 'summary']);
+    /*
+    |--------------------------------------------------------------------------
+    | Authenticated — Creator / Admin
+    |--------------------------------------------------------------------------
+    */
 
-    // 13.3 Pilot cohort comparison report
-    Route::get('/pilot/report', [AnalyticsController::class, 'pilotReport']);
+    Route::prefix('creator')->group(function () {
+        // 8.5 Get creator streak config
+        Route::get('/streak-config', [StreakConfigController::class, 'index']);
 
-    // 15.3 Multi-window cohort retention
-    Route::get('/analytics/cohort', [AdvancedAnalyticsController::class, 'cohortRetention']);
+        // 8.6 Update creator streak config
+        Route::patch('/streak-config', [StreakConfigController::class, 'update']);
 
-    // 15.3 LTV correlation (caller supplies revenue data)
-    Route::post('/analytics/ltv', [AdvancedAnalyticsController::class, 'ltvCorrelation']);
+        // 8.7 Get creator badge config
+        Route::get('/badge-config', [BadgeConfigController::class, 'index']);
 
-    // 15.3 Data warehouse batch export
-    Route::get('/analytics/export', [AdvancedAnalyticsController::class, 'exportBatch']);
+        // 8.8 Update creator badge config
+        Route::patch('/badge-config', [BadgeConfigController::class, 'update']);
 
-    // 15.4 Moderation review queue
-    Route::get('/moderation/queue', [ModerationController::class, 'index']);
-    Route::patch('/moderation/{item}', [ModerationController::class, 'review']);
+        // 8.9 Manually award badge to a user
+        Route::post('/users/{user}/badges', [BadgeConfigController::class, 'awardBadge']);
+
+        // 8.10 Revoke a badge from a user
+        Route::delete('/users/{user}/badges/{badge}', [BadgeConfigController::class, 'revokeBadge']);
+
+        // 8.11 Get engagement summary
+        Route::get('/engagement', [EngagementController::class, 'index']);
+
+        // 11.3 Revoke activity events when source content is deleted
+        Route::delete('/events/source', [EventAdminController::class, 'revokeBySource']);
+
+        // 13.2 Engagement metrics summary
+        Route::get('/analytics', [AnalyticsController::class, 'summary']);
+
+        // 13.3 Pilot cohort comparison report
+        Route::get('/pilot/report', [AnalyticsController::class, 'pilotReport']);
+
+        // 15.3 Multi-window cohort retention
+        Route::get('/analytics/cohort', [AdvancedAnalyticsController::class, 'cohortRetention']);
+
+        // 15.3 LTV correlation (caller supplies revenue data)
+        Route::post('/analytics/ltv', [AdvancedAnalyticsController::class, 'ltvCorrelation']);
+
+        // 15.3 Data warehouse batch export
+        Route::get('/analytics/export', [AdvancedAnalyticsController::class, 'exportBatch']);
+
+        // 15.4 Moderation review queue
+        Route::get('/moderation/queue', [ModerationController::class, 'index']);
+        Route::patch('/moderation/{item}', [ModerationController::class, 'review']);
+    });
 });

@@ -75,7 +75,7 @@ export default function Sidebar() {
             <p className="truncate text-xs font-medium text-gray-700">{user.name}</p>
             <p className="truncate text-xs text-gray-400">{user.email}</p>
             <button
-              onClick={logout}
+              onClick={() => logout()}
               className="mt-2 text-xs text-gray-500 hover:text-gray-900"
             >
               Sign out

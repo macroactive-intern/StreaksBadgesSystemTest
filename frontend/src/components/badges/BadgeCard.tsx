@@ -1,21 +1,22 @@
 'use client'
 
 import { useState } from 'react'
-import { setBadgeVisibility, setBadgeFeatured, USER_ID } from '@/lib/api'
+import { setBadgeVisibility, setBadgeFeatured } from '@/lib/api'
 import type { EarnedBadge } from '@/lib/types'
-import { useAuth } from '@/context/AuthContext'
 
 export default function BadgeCard({ badge: initial }: { badge: EarnedBadge }) {
-  const { user } = useAuth()
-  const userId = user?.id ?? USER_ID
   const [badge, setBadge] = useState(initial)
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const toggleVisibility = async () => {
     setBusy(true)
+    setError(null)
     try {
-      const updated = await setBadgeVisibility(badge.user_badge_id, userId, !badge.privacy_hidden)
+      const updated = await setBadgeVisibility(badge.user_badge_id, !badge.privacy_hidden)
       setBadge(updated)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed')
     } finally {
       setBusy(false)
     }
@@ -23,9 +24,12 @@ export default function BadgeCard({ badge: initial }: { badge: EarnedBadge }) {
 
   const toggleFeatured = async () => {
     setBusy(true)
+    setError(null)
     try {
-      const updated = await setBadgeFeatured(badge.user_badge_id, userId, badge.is_featured)
+      const updated = await setBadgeFeatured(badge.user_badge_id, badge.is_featured)
       setBadge(updated)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed')
     } finally {
       setBusy(false)
     }
@@ -44,6 +48,8 @@ export default function BadgeCard({ badge: initial }: { badge: EarnedBadge }) {
       <p className="mt-2 text-xs text-gray-400">
         Earned {new Date(badge.earned_at).toLocaleDateString()}
       </p>
+
+      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
 
       <div className="mt-3 flex gap-3">
         <button

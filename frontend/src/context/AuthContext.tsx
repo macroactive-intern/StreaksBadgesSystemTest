@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
+import { loginRequest, logoutRequest, TOKEN_KEY } from '@/lib/api'
 
 export interface AuthUser {
   id: number
@@ -11,44 +12,54 @@ export interface AuthUser {
 interface AuthContextValue {
   user: AuthUser | null
   login: (email: string, password: string) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-const STORAGE_KEY = 'ma_auth_user'
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
+const USER_KEY = 'ma_auth_user'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
 
+  // Restore session from localStorage on mount
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY)
+      const stored = localStorage.getItem(USER_KEY)
       if (stored) setUser(JSON.parse(stored))
     } catch {
       // ignore malformed storage
     }
   }, [])
 
-  const login = async (email: string, password: string) => {
-    const res = await fetch(`${BASE}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}))
-      throw new Error(body.message ?? 'Login failed')
-    }
-    const { data } = await res.json()
-    setUser(data)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  // Auto-logout when any API call receives a 401
+  useEffect(() => {
+    const handleUnauthorized = () => clearSession()
+    window.addEventListener('auth:unauthorized', handleUnauthorized)
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized)
+  }, [])
+
+  const clearSession = () => {
+    setUser(null)
+    localStorage.removeItem(USER_KEY)
+    localStorage.removeItem(TOKEN_KEY)
   }
 
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem(STORAGE_KEY)
+  const login = async (email: string, password: string) => {
+    const { token, user: u } = await loginRequest(email, password)
+    localStorage.setItem(TOKEN_KEY, token)
+    localStorage.setItem(USER_KEY, JSON.stringify(u))
+    setUser(u)
+  }
+
+  const logout = async () => {
+    try {
+      await logoutRequest()
+    } catch {
+      // Token may already be invalid — clear locally regardless
+    } finally {
+      clearSession()
+    }
   }
 
   return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>

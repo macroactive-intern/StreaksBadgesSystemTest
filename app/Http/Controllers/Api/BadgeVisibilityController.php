@@ -16,16 +16,14 @@ class BadgeVisibilityController extends Controller
 
     /**
      * 12.1 — PATCH /api/badges/{badge}/visibility
-     * Toggle whether a badge is visible in public-facing views.
      */
     public function setVisibility(Request $request, UserBadge $badge): JsonResponse
     {
         $request->validate([
-            'user_id' => ['required', 'integer', 'min:1'],
-            'hidden'  => ['required', 'boolean'],
+            'hidden' => ['required', 'boolean'],
         ]);
 
-        if ($badge->user_id !== (int) $request->user_id) {
+        if ($badge->user_id !== $request->user()->id) {
             return response()->json(['message' => 'Badge does not belong to this user.'], 403);
         }
 
@@ -37,17 +35,14 @@ class BadgeVisibilityController extends Controller
 
     /**
      * 12.1 — PATCH /api/badges/{badge}/feature
-     * Set a badge as the user's featured badge.
-     * Send hidden=false body or omit to set; set body to {"unfeature":true} to clear.
      */
     public function setFeatured(Request $request, UserBadge $badge): JsonResponse
     {
         $request->validate([
-            'user_id'   => ['required', 'integer', 'min:1'],
             'unfeature' => ['sometimes', 'boolean'],
         ]);
 
-        if ($badge->user_id !== (int) $request->user_id) {
+        if ($badge->user_id !== $request->user()->id) {
             return response()->json(['message' => 'Badge does not belong to this user.'], 403);
         }
 

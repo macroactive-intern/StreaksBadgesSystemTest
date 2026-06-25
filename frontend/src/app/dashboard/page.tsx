@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getStreaks, getBadges, USER_ID, CREATOR_APP_ID } from '@/lib/api'
+import { getStreaks, getBadges, CREATOR_APP_ID } from '@/lib/api'
 import type { Streak, BadgesResponse } from '@/lib/types'
 import StreakCard from '@/components/streaks/StreakCard'
 import BadgeCard from '@/components/badges/BadgeCard'
@@ -9,22 +9,27 @@ import { useAuth } from '@/context/AuthContext'
 
 export default function DashboardPage() {
   const { user } = useAuth()
-  const userId = user?.id ?? USER_ID
   const [streaks, setStreaks] = useState<Streak[]>([])
   const [badges, setBadges] = useState<BadgesResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!user) { setLoading(false); return }
     setLoading(true)
-    Promise.all([getStreaks(userId, CREATOR_APP_ID), getBadges(userId, CREATOR_APP_ID)])
-      .then(([s, b]) => {
-        setStreaks(s)
-        setBadges(b)
-      })
+    Promise.all([getStreaks(user.id, CREATOR_APP_ID), getBadges(user.id, CREATOR_APP_ID)])
+      .then(([s, b]) => { setStreaks(s); setBadges(b) })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
-  }, [userId])
+  }, [user])
+
+  if (!user) {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <p className="text-sm text-gray-500">Sign in to view your dashboard.</p>
+      </div>
+    )
+  }
 
   if (loading) return <div className="p-8 text-gray-500">Loading…</div>
   if (error) return <div className="p-8 text-red-500">{error}</div>

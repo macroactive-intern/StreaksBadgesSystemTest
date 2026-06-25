@@ -6,6 +6,7 @@ use App\Enums\StreakType;
 use App\Exceptions\FreezeCooldownException;
 use App\Exceptions\NoAvailableFreezeException;
 use App\Models\StreakFreeze;
+use Illuminate\Support\Facades\DB;
 
 class StreakFreezeService
 {
@@ -33,26 +34,30 @@ class StreakFreezeService
      */
     public function apply(int $userId, int $creatorAppId, StreakType $streakType, string $missedDate): StreakFreeze
     {
-        if (! $this->hasAvailableFreeze($userId, $creatorAppId, $streakType)) {
-            throw new NoAvailableFreezeException();
-        }
+        return DB::transaction(function () use ($userId, $creatorAppId, $streakType, $missedDate) {
+            // Lock the row so concurrent requests block here rather than racing past the checks.
+            $freeze = StreakFreeze::where('user_id', $userId)
+                ->where('creator_app_id', $creatorAppId)
+                ->where('streak_type', $streakType->value)
+                ->whereNull('used_at')
+                ->lockForUpdate()
+                ->first();
 
-        if ($this->withinCooldown($userId, $creatorAppId, $streakType)) {
-            throw new FreezeCooldownException();
-        }
+            if (!$freeze) {
+                throw new NoAvailableFreezeException();
+            }
 
-        $freeze = StreakFreeze::where('user_id', $userId)
-            ->where('creator_app_id', $creatorAppId)
-            ->where('streak_type', $streakType->value)
-            ->whereNull('used_at')
-            ->firstOrFail();
+            if ($this->withinCooldown($userId, $creatorAppId, $streakType)) {
+                throw new FreezeCooldownException();
+            }
 
-        $freeze->update([
-            'used_at'          => now(),
-            'applied_to_date'  => $missedDate,
-        ]);
+            $freeze->update([
+                'used_at'         => now(),
+                'applied_to_date' => $missedDate,
+            ]);
 
-        return $freeze->refresh();
+            return $freeze->refresh();
+        });
     }
 
     /**

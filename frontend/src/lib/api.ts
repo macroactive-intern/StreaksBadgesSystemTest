@@ -15,30 +15,90 @@ import type {
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
 
-export const USER_ID = parseInt(process.env.NEXT_PUBLIC_USER_ID ?? '1', 10)
 export const CREATOR_APP_ID = parseInt(process.env.NEXT_PUBLIC_CREATOR_APP_ID ?? '1', 10)
 
-async function get<T>(path: string, params: Record<string, string | number> = {}): Promise<T> {
+// ---------------------------------------------------------------------------
+// Token helpers — read/write from localStorage on the client only
+// ---------------------------------------------------------------------------
+
+export const TOKEN_KEY = 'ma_auth_token'
+
+function getToken(): string | null {
+  if (typeof window === 'undefined') return null
+  try { return localStorage.getItem(TOKEN_KEY) } catch { return null }
+}
+
+function authHeaders(): Record<string, string> {
+  const token = getToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+// ---------------------------------------------------------------------------
+// Base fetch helpers
+// ---------------------------------------------------------------------------
+
+async function request<T>(
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  path: string,
+  body?: Record<string, unknown>,
+  params: Record<string, string | number> = {},
+): Promise<T> {
   const url = new URL(path, BASE)
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, String(v)))
-  const res = await fetch(url.toString(), { cache: 'no-store' })
-  if (!res.ok) throw new Error(`API ${res.status}: ${path}`)
-  const json = await res.json()
-  return json.data as T
-}
 
-async function patch<T>(path: string, body: Record<string, unknown>): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify(body),
+  const res = await fetch(url.toString(), {
+    method,
+    headers: {
+      ...authHeaders(),
+      Accept: 'application/json',
+      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+    cache: 'no-store',
   })
-  if (!res.ok) throw new Error(`API ${res.status}: ${path}`)
+
+  if (res.status === 401) {
+    // Token expired or revoked — notify the app so AuthContext can clear state.
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('auth:unauthorized'))
+    }
+    throw new Error('Unauthorized')
+  }
+
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}))
+    throw new Error((json as { message?: string }).message ?? `API ${res.status}: ${path}`)
+  }
+
+  if (res.status === 204) return undefined as T
   const json = await res.json()
   return json.data as T
 }
 
+const get  = <T>(path: string, params?: Record<string, string | number>) => request<T>('GET',   path, undefined, params)
+const post = <T>(path: string, body: Record<string, unknown> = {})       => request<T>('POST',  path, body)
+const patch = <T>(path: string, body: Record<string, unknown>)            => request<T>('PATCH', path, body)
+
+// ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
+
+export interface LoginResponse {
+  token: string
+  user: { id: number; name: string; email: string }
+}
+
+export const loginRequest  = (email: string, password: string) =>
+  post<LoginResponse>('/api/auth/login', { email, password })
+
+export const logoutRequest = () => post<void>('/api/auth/logout')
+
+// ---------------------------------------------------------------------------
 // User endpoints
+// ---------------------------------------------------------------------------
+
+export const USER_ID = 1  // kept as a type-level default; pages must not use it for real requests
+
 export const getStreaks = (userId: number, creatorAppId: number) =>
   get<Streak[]>('/api/streaks', { user_id: userId, creator_app_id: creatorAppId })
 
@@ -62,16 +122,19 @@ export const updatePreferences = (
     creator_app_id: creatorAppId,
   })
 
-export const setBadgeVisibility = (userBadgeId: number, userId: number, hidden: boolean) =>
-  patch<EarnedBadge>(`/api/badges/${userBadgeId}/visibility`, { user_id: userId, hidden })
+// user_id is no longer sent — the backend derives it from the Bearer token
+export const setBadgeVisibility = (userBadgeId: number, hidden: boolean) =>
+  patch<EarnedBadge>(`/api/badges/${userBadgeId}/visibility`, { hidden })
 
-export const setBadgeFeatured = (userBadgeId: number, userId: number, unfeature = false) =>
+export const setBadgeFeatured = (userBadgeId: number, unfeature = false) =>
   patch<EarnedBadge>(`/api/badges/${userBadgeId}/feature`, {
-    user_id: userId,
     ...(unfeature && { unfeature: true }),
   })
 
+// ---------------------------------------------------------------------------
 // Creator endpoints
+// ---------------------------------------------------------------------------
+
 export const getStreakConfigs = (creatorAppId: number) =>
   get<StreakConfig[]>('/api/creator/streak-config', { creator_app_id: creatorAppId })
 

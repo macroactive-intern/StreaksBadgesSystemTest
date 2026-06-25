@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getLeaderboard, CREATOR_APP_ID, USER_ID } from '@/lib/api'
+import { getLeaderboard, CREATOR_APP_ID } from '@/lib/api'
 import type { Leaderboard, LeaderboardType } from '@/lib/types'
 import LeaderboardTable from '@/components/leaderboards/LeaderboardTable'
 import { useAuth } from '@/context/AuthContext'
@@ -14,7 +14,6 @@ const TYPES: { value: LeaderboardType; label: string }[] = [
 
 export default function LeaderboardsPage() {
   const { user } = useAuth()
-  const userId = user?.id ?? USER_ID
   const [activeType, setActiveType] = useState<LeaderboardType>('weekly_workout')
   const [board, setBoard] = useState<Leaderboard | null>(null)
   const [loading, setLoading] = useState(true)
@@ -54,7 +53,7 @@ export default function LeaderboardsPage() {
       {!loading && !error && board && (
         <>
           <p className="text-sm text-gray-500">{board.label}</p>
-          <LeaderboardTable entries={board.entries} currentUserId={userId} />
+          <LeaderboardTable entries={board.entries} currentUserId={user?.id} />
         </>
       )}
     </div>

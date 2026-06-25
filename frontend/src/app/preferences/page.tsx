@@ -1,13 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getPreferences, updatePreferences, USER_ID, CREATOR_APP_ID } from '@/lib/api'
+import { getPreferences, updatePreferences, CREATOR_APP_ID } from '@/lib/api'
 import type { UserPreferences } from '@/lib/types'
 import { useAuth } from '@/context/AuthContext'
 
 export default function PreferencesPage() {
   const { user } = useAuth()
-  const userId = user?.id ?? USER_ID
   const [prefs, setPrefs] = useState<UserPreferences | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -15,20 +14,21 @@ export default function PreferencesPage() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    getPreferences(userId, CREATOR_APP_ID)
+    if (!user) { setLoading(false); return }
+    getPreferences(user.id, CREATOR_APP_ID)
       .then(setPrefs)
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
-  }, [userId])
+  }, [user])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!prefs) return
+    if (!prefs || !user) return
     setSaving(true)
     setSaved(false)
     setError(null)
     try {
-      const updated = await updatePreferences(userId, CREATOR_APP_ID, {
+      const updated = await updatePreferences(user.id, CREATOR_APP_ID, {
         leaderboard_nickname: prefs.leaderboard_nickname,
         leaderboard_visible: prefs.leaderboard_visible,
       })
@@ -39,6 +39,14 @@ export default function PreferencesPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  if (!user) {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <p className="text-sm text-gray-500">Sign in to manage your preferences.</p>
+      </div>
+    )
   }
 
   if (loading) return <div className="p-8 text-gray-500">Loading…</div>
@@ -53,10 +61,7 @@ export default function PreferencesPage() {
         className="space-y-5 rounded-lg border border-gray-200 bg-white p-6"
       >
         <div>
-          <label
-            htmlFor="nickname"
-            className="mb-1 block text-sm font-medium text-gray-700"
-          >
+          <label htmlFor="nickname" className="mb-1 block text-sm font-medium text-gray-700">
             Leaderboard Nickname
           </label>
           <input
@@ -76,6 +81,8 @@ export default function PreferencesPage() {
           <span className="text-sm font-medium text-gray-700">Show on leaderboards</span>
           <button
             type="button"
+            aria-pressed={prefs?.leaderboard_visible}
+            aria-label={prefs?.leaderboard_visible ? 'Hide from leaderboards' : 'Show on leaderboards'}
             onClick={() =>
               setPrefs((p) => (p ? { ...p, leaderboard_visible: !p.leaderboard_visible } : p))
             }
