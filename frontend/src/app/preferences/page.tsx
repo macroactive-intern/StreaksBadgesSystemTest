@@ -3,8 +3,11 @@
 import { useEffect, useState } from 'react'
 import { getPreferences, updatePreferences, USER_ID, CREATOR_APP_ID } from '@/lib/api'
 import type { UserPreferences } from '@/lib/types'
+import { useAuth } from '@/context/AuthContext'
 
 export default function PreferencesPage() {
+  const { user } = useAuth()
+  const userId = user?.id ?? USER_ID
   const [prefs, setPrefs] = useState<UserPreferences | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -12,11 +15,11 @@ export default function PreferencesPage() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    getPreferences(USER_ID, CREATOR_APP_ID)
+    getPreferences(userId, CREATOR_APP_ID)
       .then(setPrefs)
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
-  }, [])
+  }, [userId])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -25,7 +28,7 @@ export default function PreferencesPage() {
     setSaved(false)
     setError(null)
     try {
-      const updated = await updatePreferences(USER_ID, CREATOR_APP_ID, {
+      const updated = await updatePreferences(userId, CREATOR_APP_ID, {
         leaderboard_nickname: prefs.leaderboard_nickname,
         leaderboard_visible: prefs.leaderboard_visible,
       })

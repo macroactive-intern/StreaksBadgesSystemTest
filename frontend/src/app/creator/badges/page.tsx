@@ -14,7 +14,7 @@ function BadgeRow({ badge: initial }: { badge: BadgeDefinition }) {
     setError(null)
     try {
       const updated = await updateBadgeConfig({
-        id: badge.id,
+        badge_id: badge.id,
         creator_app_id: CREATOR_APP_ID,
         enabled: !badge.enabled,
       })
@@ -40,19 +40,23 @@ function BadgeRow({ badge: initial }: { badge: BadgeDefinition }) {
             <p className="text-xs text-gray-500">{badge.badge_category}</p>
           </div>
         </div>
-        <button
-          onClick={toggleEnabled}
-          disabled={saving}
-          className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
-            badge.enabled ? 'bg-gray-900' : 'bg-gray-300'
-          }`}
-        >
-          <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-              badge.enabled ? 'translate-x-6' : 'translate-x-1'
+        {badge.creator_app_id !== null ? (
+          <button
+            onClick={toggleEnabled}
+            disabled={saving}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+              badge.enabled ? 'bg-gray-900' : 'bg-gray-300'
             }`}
-          />
-        </button>
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                badge.enabled ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        ) : (
+          <span className="text-xs text-gray-400">Platform</span>
+        )}
       </div>
 
       <p className="mt-3 line-clamp-2 text-xs text-gray-400">{badge.description}</p>

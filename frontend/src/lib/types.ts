@@ -91,7 +91,7 @@ export interface StreakConfig {
 
 export interface BadgeDefinition {
   id: number
-  creator_app_id: number
+  creator_app_id: number | null
   name: string
   description: string
   icon: string

@@ -1,7 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useAuth } from '@/context/AuthContext'
+import LoginModal from '@/components/auth/LoginModal'
 
 const userLinks = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -18,6 +21,8 @@ const creatorLinks = [
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const { user, logout } = useAuth()
+  const [showLogin, setShowLogin] = useState(false)
 
   const linkClass = (href: string) =>
     `flex items-center rounded-md px-3 py-2 text-sm transition-colors ${
@@ -64,10 +69,29 @@ export default function Sidebar() {
         </section>
       </nav>
 
-      <div className="border-t border-gray-200 p-3 text-xs text-gray-400">
-        <p>User {process.env.NEXT_PUBLIC_USER_ID ?? '–'}</p>
-        <p>App {process.env.NEXT_PUBLIC_CREATOR_APP_ID ?? '–'}</p>
+      <div className="border-t border-gray-200 p-3">
+        {user ? (
+          <div className="space-y-1">
+            <p className="truncate text-xs font-medium text-gray-700">{user.name}</p>
+            <p className="truncate text-xs text-gray-400">{user.email}</p>
+            <button
+              onClick={logout}
+              className="mt-2 text-xs text-gray-500 hover:text-gray-900"
+            >
+              Sign out
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowLogin(true)}
+            className="w-full rounded-md bg-gray-900 px-3 py-2 text-xs font-medium text-white hover:bg-gray-700"
+          >
+            Sign in
+          </button>
+        )}
       </div>
+
+      {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
     </aside>
   )
 }

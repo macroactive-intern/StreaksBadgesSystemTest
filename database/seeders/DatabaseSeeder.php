@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Database\Seeders\BadgeDefinitionSeeder;
+use Database\Seeders\UserDataSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -16,15 +17,16 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        User::factory()->createMany([
+            ['name' => 'Alice Nguyen',   'email' => 'alice@example.com'],
+            ['name' => 'Ben Carter',     'email' => 'ben@example.com'],
+            ['name' => 'Carla Reyes',    'email' => 'carla@example.com'],
+            ['name' => 'David Kim',      'email' => 'david@example.com'],
         ]);
 
         $this->call([
             BadgeDefinitionSeeder::class,
+            UserDataSeeder::class,
         ]);
     }
 }

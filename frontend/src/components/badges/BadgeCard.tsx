@@ -3,15 +3,18 @@
 import { useState } from 'react'
 import { setBadgeVisibility, setBadgeFeatured, USER_ID } from '@/lib/api'
 import type { EarnedBadge } from '@/lib/types'
+import { useAuth } from '@/context/AuthContext'
 
 export default function BadgeCard({ badge: initial }: { badge: EarnedBadge }) {
+  const { user } = useAuth()
+  const userId = user?.id ?? USER_ID
   const [badge, setBadge] = useState(initial)
   const [busy, setBusy] = useState(false)
 
   const toggleVisibility = async () => {
     setBusy(true)
     try {
-      const updated = await setBadgeVisibility(badge.user_badge_id, USER_ID, !badge.privacy_hidden)
+      const updated = await setBadgeVisibility(badge.user_badge_id, userId, !badge.privacy_hidden)
       setBadge(updated)
     } finally {
       setBusy(false)
@@ -21,7 +24,7 @@ export default function BadgeCard({ badge: initial }: { badge: EarnedBadge }) {
   const toggleFeatured = async () => {
     setBusy(true)
     try {
-      const updated = await setBadgeFeatured(badge.user_badge_id, USER_ID, badge.is_featured)
+      const updated = await setBadgeFeatured(badge.user_badge_id, userId, badge.is_featured)
       setBadge(updated)
     } finally {
       setBusy(false)

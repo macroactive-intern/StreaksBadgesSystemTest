@@ -5,22 +5,26 @@ import { getStreaks, getBadges, USER_ID, CREATOR_APP_ID } from '@/lib/api'
 import type { Streak, BadgesResponse } from '@/lib/types'
 import StreakCard from '@/components/streaks/StreakCard'
 import BadgeCard from '@/components/badges/BadgeCard'
+import { useAuth } from '@/context/AuthContext'
 
 export default function DashboardPage() {
+  const { user } = useAuth()
+  const userId = user?.id ?? USER_ID
   const [streaks, setStreaks] = useState<Streak[]>([])
   const [badges, setBadges] = useState<BadgesResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    Promise.all([getStreaks(USER_ID, CREATOR_APP_ID), getBadges(USER_ID, CREATOR_APP_ID)])
+    setLoading(true)
+    Promise.all([getStreaks(userId, CREATOR_APP_ID), getBadges(userId, CREATOR_APP_ID)])
       .then(([s, b]) => {
         setStreaks(s)
         setBadges(b)
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
-  }, [])
+  }, [userId])
 
   if (loading) return <div className="p-8 text-gray-500">Loading…</div>
   if (error) return <div className="p-8 text-red-500">{error}</div>

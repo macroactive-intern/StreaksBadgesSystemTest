@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BadgeController;
 use App\Http\Controllers\Api\BadgeVisibilityController;
 use App\Http\Controllers\Api\EventController;
@@ -14,6 +15,14 @@ use App\Http\Controllers\Api\Creator\StreakConfigController;
 use App\Http\Controllers\Api\LeaderboardController;
 use App\Http\Controllers\Api\UserPreferencesController;
 use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| Auth
+|--------------------------------------------------------------------------
+*/
+
+Route::post('/auth/login', [AuthController::class, 'login']);
 
 /*
 |--------------------------------------------------------------------------
