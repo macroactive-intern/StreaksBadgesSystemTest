@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getStreaks, getBadges, CREATOR_APP_ID } from '@/lib/api'
-import type { Streak, BadgesResponse } from '@/lib/types'
+import { getStreaks, getBadges, recordCheckIn, CREATOR_APP_ID } from '@/lib/api'
+import type { Streak, BadgesResponse, EarnedBadge } from '@/lib/types'
 import StreakCard from '@/components/streaks/StreakCard'
 import BadgeCard from '@/components/badges/BadgeCard'
 import { useAuth } from '@/context/AuthContext'
@@ -13,6 +13,9 @@ export default function DashboardPage() {
   const [badges, setBadges] = useState<BadgesResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [checkingIn, setCheckingIn] = useState(false)
+  const [newBadges, setNewBadges] = useState<EarnedBadge[]>([])
+  const [checkInDone, setCheckInDone] = useState(false)
 
   useEffect(() => {
     if (!user) { setLoading(false); return }
@@ -31,12 +34,56 @@ export default function DashboardPage() {
     )
   }
 
+  const handleCheckIn = async () => {
+    if (!user) return
+    setCheckingIn(true)
+    setNewBadges([])
+    try {
+      const result = await recordCheckIn(user.id, CREATOR_APP_ID)
+      setCheckInDone(true)
+      setNewBadges(result.new_badges ?? [])
+      window.dispatchEvent(new Event('checkin:complete'))
+      const [s, b] = await Promise.all([
+        getStreaks(user.id, CREATOR_APP_ID),
+        getBadges(user.id, CREATOR_APP_ID),
+      ])
+      setStreaks(s)
+      setBadges(b)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Check-in failed')
+    } finally {
+      setCheckingIn(false)
+    }
+  }
+
   if (loading) return <div className="p-8 text-gray-500">Loading…</div>
   if (error) return <div className="p-8 text-red-500">{error}</div>
 
+  const today = new Date().toLocaleDateString('en-CA')
+  const streaksNeedingCheckIn = streaks.filter((s) => s.last_completed_date !== today)
+
   return (
     <div className="space-y-8 p-8">
-      <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+      <div className="flex items-start justify-between">
+        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+        <div className="flex flex-col items-end gap-2">
+          {!checkInDone && streaksNeedingCheckIn.length > 0 && (
+            <button
+              onClick={handleCheckIn}
+              disabled={checkingIn}
+              className="rounded-md bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600 disabled:opacity-50"
+            >
+              {checkingIn ? 'Checking in…' : `Check In (${streaksNeedingCheckIn.length})`}
+            </button>
+          )}
+          {checkInDone && (
+            <span className="text-sm text-green-600 font-medium">
+              ✓ Checked in today
+              {newBadges.length > 0 && ` — ${newBadges.length} new badge${newBadges.length > 1 ? 's' : ''}!`}
+            </span>
+          )}
+        </div>
+      </div>
 
       <section>
         <h2 className="mb-4 text-base font-medium text-gray-700">

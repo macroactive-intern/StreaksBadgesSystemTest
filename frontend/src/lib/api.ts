@@ -131,6 +131,21 @@ export const setBadgeFeatured = (userBadgeId: number, unfeature = false) =>
     ...(unfeature && { unfeature: true }),
   })
 
+export interface CheckInResult {
+  event_id: number
+  local_date: string
+  new_badges: EarnedBadge[]
+}
+
+export const recordCheckIn = (userId: number, creatorAppId: number) =>
+  post<CheckInResult>('/api/events', {
+    user_id: userId,
+    creator_app_id: creatorAppId,
+    event_type: 'habit_completed',
+    event_timestamp_utc: new Date().toISOString(),
+    user_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  })
+
 // ---------------------------------------------------------------------------
 // Creator endpoints
 // ---------------------------------------------------------------------------

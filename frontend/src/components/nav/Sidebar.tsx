@@ -1,10 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import LoginModal from '@/components/auth/LoginModal'
+import CheckInNotification from '@/components/checkin/CheckInNotification'
+import { getStreaks, recordCheckIn, CREATOR_APP_ID } from '@/lib/api'
+import type { Streak } from '@/lib/types'
 
 const userLinks = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -19,10 +22,51 @@ const creatorLinks = [
   { href: '/creator/moderation', label: 'Moderation' },
 ]
 
+function needsCheckInToday(streak: Streak): boolean {
+  const today = new Date().toLocaleDateString('en-CA')
+  return streak.last_completed_date !== today
+}
+
 export default function Sidebar() {
   const pathname = usePathname()
   const { user, logout } = useAuth()
   const [showLogin, setShowLogin] = useState(false)
+  const [pendingStreaks, setPendingStreaks] = useState<Streak[]>([])
+  const [checkInLoading, setCheckInLoading] = useState(false)
+  const checkedUserRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (!user || checkedUserRef.current === user.id) return
+    checkedUserRef.current = user.id
+    getStreaks(user.id, CREATOR_APP_ID)
+      .then((streaks) => {
+        const due = streaks.filter(needsCheckInToday)
+        if (due.length > 0) setPendingStreaks(due)
+      })
+      .catch(() => {})
+  }, [user])
+
+  useEffect(() => {
+    if (!user) {
+      checkedUserRef.current = null
+      setPendingStreaks([])
+    }
+  }, [user])
+
+  const handleCheckIn = async () => {
+    if (!user) return
+    setCheckInLoading(true)
+    try {
+      await recordCheckIn(user.id, CREATOR_APP_ID)
+      window.dispatchEvent(new Event('checkin:complete'))
+      setPendingStreaks([])
+    } catch {
+      // dismiss silently; user can retry on dashboard
+      setPendingStreaks([])
+    } finally {
+      setCheckInLoading(false)
+    }
+  }
 
   const linkClass = (href: string) =>
     `flex items-center rounded-md px-3 py-2 text-sm transition-colors ${
@@ -92,6 +136,15 @@ export default function Sidebar() {
       </div>
 
       {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
+
+      {pendingStreaks.length > 0 && (
+        <CheckInNotification
+          streaks={pendingStreaks}
+          onCheckIn={handleCheckIn}
+          onDismiss={() => setPendingStreaks([])}
+          loading={checkInLoading}
+        />
+      )}
     </aside>
   )
 }
